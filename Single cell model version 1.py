@@ -100,7 +100,19 @@ scanpy.pl.scatter(adata, "total_counts", "n_genes_by_counts")
 
 #%% Normalization if necessary
 
-adata.var.loc["Krt2"]
+print("Min:", numpy.min(adata.X))
+print("Max:", numpy.max(adata.X))
+print("Mean:", numpy.mean(adata.X))
+
+adata.obs['total_counts'] = adata.X.sum(axis=1)
+adata.obs['total_counts'].describe()
+
+pyplot.hist(adata.obs['total_counts'], bins=50)
+pyplot.xlabel('Total counts per cell')
+pyplot.ylabel('Number of cells')
+pyplot.show()
+
+# Data is already log-transformed
 
 #%% Clustering
 
@@ -113,3 +125,28 @@ scanpy.pl.pca(
     ncols=2,
     size=2,
 )
+
+#%% Get important genes
+
+model_genes = ["Krtdap", "Hic2", "Nanog", "Klf4"]
+
+model_data = adata[:, model_genes].copy()
+
+krt_data = adata[:, "Krtdap"]
+hic2_data = adata[:, "Hic2"]
+nanog_data = adata[:, "Nanog"]
+klf4_data = adata[:, "Klf4"]
+
+print(krt_data)
+# %% Plot means
+
+days = sorted(model_data.obs["exp_day"].dropna().unique())
+
+for group in experiment_groups:
+    figure, axis = pyplot.subplots()
+    for gene in model_genes:
+        gene_data = model_data[:, gene]
+        means = [gene_data[(gene_data.obs["exp_day"] == day)*(gene_data.obs["group"] == group)].X.mean() for day in days]
+        axis.plot(days, means, label=gene)
+    axis.legend()
+    axis.set_title(group)
