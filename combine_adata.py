@@ -1,6 +1,6 @@
 #%% 
 import scanpy
-import anndata
+import hdf5plugin
 import pandas
 
 #%% Define groups
@@ -84,6 +84,9 @@ adata_combined.var_names = adata_combined.var["gene_name"].astype(str)
 if not adata_combined.var_names.is_unique:
     # Make duplicates unique by adding suffix
     adata_combined.var_names_make_unique()
+# Rename gene name
+adata_combined.var['gene_symbol'] = adata_combined.var['gene_name']
+adata_combined.var = adata_combined.var.drop(columns='gene_name')
 
 # # Add var layer back
 # # grab all var DataFrames from our dictionary
@@ -113,4 +116,10 @@ print(adata_combined.var)
 # print(adata_combined.var_names)
 print(adata_combined[:, "Krtdap"].la)
 
-# %%
+# %% Save adata file
+
+adata_combined.write_h5ad(
+    "RNA Sequencing Data/splice_counts.h5ad",
+    compression=hdf5plugin.FILTERS["zstd"]
+)
+
