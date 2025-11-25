@@ -7,3 +7,11 @@ RNA Sequencing Data/220701Pool1-Pool3.h5ad
 RNA Sequencing Data/splice_counts.h5ad
 RNA Sequencing Data/velocity_adata.h5ad
 .~lock.Log.odt\#
+RNA Sequencing Data/seurat_object.h5ad
+RNA Sequencing Data/splice_counts_genbank.h5ad
+RNA Sequencing Data/splice_counts_kb.h5ad
+RNA Sequencing Data/splice_counts_umap.h5ad
+RNA Sequencing Data/splice_counts_umap_genbank.h5ad
+RNA Sequencing Data/velocity_adata_new_umap.h5ad
+RNA Sequencing Data/velocity_adata_old_umap.h5ad
+.~lock.To do.odt\#
