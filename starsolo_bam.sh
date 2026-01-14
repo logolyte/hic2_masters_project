@@ -1,11 +1,12 @@
 # Variables
-INDEX_DIR=gencode_star_index  # STAR genome index directory
-BAM_INPUT=bam_files/Repro_Day2_BFP.bam       # BAM file (mapped or unmapped)
-OUT_DIR=day2_bfp/             # output directory
+base=$1
+INDEX_DIR="/scratch/lema/m26_losu/mm10 gencode reference/star_index"  # STAR genome index directory
+BAM_INPUT="/scratch/lema/m26_losu/bam_files/$base.bam"       # BAM file (mapped or unmapped)
+out_dir="/scratch/lema/m26_losu/star_counts_gencode_mm10/$base/"              # output directory
 
 STAR \
-  --genomeDir $INDEX_DIR \
-  --readFilesIn $BAM_INPUT \
+  --genomeDir "$INDEX_DIR" \
+  --readFilesIn "$BAM_INPUT" \
   --readFilesType SAM SE \
   --readFilesCommand "samtools view -F 0x100" \
   --soloType CB_UMI_Simple \
@@ -13,12 +14,13 @@ STAR \
   --soloInputSAMattrBarcodeSeq CR UR \
   --soloInputSAMattrBarcodeQual CY UY \
   --soloFeatures Gene GeneFull SJ Velocyto \
+  --soloMultiMappers EM \
   --soloOutFileNames "./" \
-  --outFileNamePrefix $OUT_DIR \
+  --outFileNamePrefix "$out_dir" \
   --outSAMtype None \
   --soloCellFilter EmptyDrops_CR \
-  --soloCBwhitelist "10x_index/v3-whitelist-february-2018.txt" \
-  --runThreadN 16 \
+  --soloCBwhitelist "/scratch/lema/m26_losu/10x-v3-whitelist-february-2018.txt" \
+  --runThreadN 32 \
   --clipAdapterType CellRanger4 \
   --outFilterScoreMin 30 \
   --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts\
