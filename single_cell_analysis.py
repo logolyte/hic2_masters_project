@@ -14,6 +14,8 @@ import decoupler
 import IPython
 import pygam
 import textwrap
+import scipy
+import mpl_toolkits.axes_grid1
 
 def plot_group_composition(adata, group_key, sample_key="sample", normalize=False):
     if f"{sample_key}_colors" in adata.uns.keys():
@@ -24,7 +26,7 @@ def plot_group_composition(adata, group_key, sample_key="sample", normalize=Fals
         sample_color_map = None
 
     # Calculate the frequency of each sample within each cluster
-    composition = pandas.crosstab(adata.obs["macrostate"], adata.obs["sample"])
+    composition = pandas.crosstab(adata.obs[group_key], adata.obs["sample"])
     if normalize:
         composition = composition.divide(composition.sum(axis=1), axis=0)
 
@@ -45,7 +47,8 @@ def plot_group_composition(adata, group_key, sample_key="sample", normalize=Fals
 
 # Function for plotting trends independent of trajectory
 
-def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_time", layer="X", groups=None, columns=4, figure_width=14, plot_height=4, n_splines=6):
+def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_time", layer="X", groups=None, columns=4, figure_width=14, plot_height=4, n_splines=6,
+    obsm=False):
     """
     Plots smoothed gene expression using generalized additive models (GAMs).
     This provides true smooth local regression with confidence intervals.
@@ -81,14 +84,17 @@ def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_ti
         axis = axes_flat[gene_index]
         
         # Fetch expression data
-        if layer == "raw":
-            expr_data = adata.raw.to_adata()[:, gene].X
-        elif layer == "X":
-            expr_data = adata[:, gene].X
-        elif layer == "obs":
-            expr_data = adata.obs[gene]
+        if obsm:
+            expr_data = adata.obsm[layer][gene]
         else:
-            expr_data = adata[:, gene].layers[layer]
+            if layer == "raw":
+                expr_data = adata.raw.to_adata()[:, gene].X
+            elif layer == "X":
+                expr_data = adata[:, gene].X
+            elif layer == "obs":
+                expr_data = adata.obs[gene]
+            else:
+                expr_data = adata[:, gene].layers[layer]
         if hasattr(expr_data, "toarray"):
             expr_data = expr_data.toarray()
         if hasattr(expr_data, "flatten"):
@@ -157,15 +163,8 @@ def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_ti
     pyplot.tight_layout()
     pyplot.show()
 
-def compare_gsea(adata, gene_set, group_key="macrostate", layer="matrix", n_top_terms=5, significance_cutoff=0.05, sort_key="NES", remove_parenthesis=False,
-                 wrap_width=30, font_size=10, min_dot_size=5, top_from="all", significance_metric="FDR q-val"):
-
-    if sort_key == "FDR q-val":
-        sort_ascending = True
-        signed_key = False
-    elif sort_key == "NES":
-        sort_ascending = False
-        signed_key =True
+def compare_gsea(adata, gene_set, group_key="macrostate", layer=None, n_top_terms=5, significance_cutoff=0.05, sort_key="NES", remove_parenthesis=False,
+                 wrap_width=30, font_size=10, min_dot_size=5, top_from="all", significance_metric="FDR q-val", enrichment_cutoff=0, reverse = False):
 
     # extract unique groups from the categorical column
     groups = adata.obs[group_key].cat.categories
@@ -174,7 +173,7 @@ def compare_gsea(adata, gene_set, group_key="macrostate", layer="matrix", n_top_
         adata,
         groupby=group_key,
         method="wilcoxon",
-        key_added="macrostate_rank_genes",
+        key_added=f"{group_key}_rank_genes",
         layer=layer,
         use_raw=False
     )
@@ -204,24 +203,21 @@ def compare_gsea(adata, gene_set, group_key="macrostate", layer="matrix", n_top_
     # concatenate all enrichment results into a single long-form dataframe
     gsea_dataframe = pandas.concat(gsea_results, ignore_index=True)
 
-    # identify the top significant gene sets across all groups
+    # identify the top significant gene sets across all groups or one group
     top_gene_sets = []
     if top_from == "all":
-        for group in groups:
-            significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] < significance_cutoff)]
-            if signed_key:
-                top_terms = significant_results.sort_values(by=sort_key, ascending=sort_ascending).head(n_top_terms)["Term"].tolist()
-            else:
-                top_terms = significant_results.query("NES > 0").sort_values(by=sort_key, ascending=sort_ascending).head(n_top_terms)["Term"].tolist()
-            top_gene_sets.extend(top_terms)
+        group_set = groups
     else:
-        group = top_from
-        significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)]
-        if signed_key:
-            top_terms = significant_results.sort_values(by=sort_key, ascending=sort_ascending).head(n_top_terms)["Term"].tolist()
-        else:
-            top_terms = significant_results.query("NES > 0").sort_values(by=sort_key, ascending=sort_ascending).head(n_top_terms)["Term"].tolist()
-        top_gene_sets.extend(top_terms)
+        group_set = [top_from]
+    for group in group_set:
+            if reverse:
+                significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)\
+                                                     & (gsea_dataframe["NES"] < enrichment_cutoff)]
+            else:
+                significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)\
+                                                     & (gsea_dataframe["NES"] > enrichment_cutoff)]
+            top_terms = significant_results.sort_values(by=sort_key, ascending=reverse).head(n_top_terms)["Term"].tolist()
+            top_gene_sets.extend(top_terms)
 
     # retain unique gene sets while preserving their initial order
     unique_top_gene_sets = list(dict.fromkeys(top_gene_sets))
@@ -287,7 +283,7 @@ def compare_gsea(adata, gene_set, group_key="macrostate", layer="matrix", n_top_
 
 # Score TF activity in all macrostates
 
-def plot_tf_activity(adata, network, group_key="macrostate", layer="matrix", n_top=5, top_from="all", significance_cutoff=0.05, min_dot_size=5, font_size=12,
+def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5, top_from="all", significance_cutoff=0.05, min_dot_size=5, font_size=12,
     activity_cutoff=-numpy.inf, reverse = False, pathway_key="TF"):
 
     groups = adata.obs[group_key].cat.categories
@@ -322,20 +318,20 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer="matrix", n_t
     if top_from == "all":
         for group in groups:
             if reverse:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] < significance_cutoff) &\
+                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
                                                 (tf_activities["Activity"] < activity_cutoff)]
             else:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] < significance_cutoff) &\
+                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
                                                 (tf_activities["Activity"] > activity_cutoff)]
             top_terms = significant_results.sort_values(by="Activity", ascending=reverse).head(n_top)[pathway_key].tolist()
             top_gene_sets.extend(top_terms)
     else:
         group = top_from
         if reverse:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] < significance_cutoff) &\
+                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
                                             (tf_activities["Activity"] < activity_cutoff)]
         else:
-            significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] < significance_cutoff) &\
+            significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
                                             (tf_activities["Activity"] > activity_cutoff)]
         top_terms = significant_results.sort_values(by="Activity", ascending=reverse).head(n_top)["TF"].tolist()
         top_gene_sets.extend(top_terms)
@@ -394,3 +390,184 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer="matrix", n_t
     figure = axis.get_figure()
     figure.tight_layout()
     pyplot.show()
+
+def calculate_correlation(adata, variable_1, variable_2, group_key="group", groups=["control", "Hic2"], layers=["Ms", "Ms"], print_results=True, method="spearman"):
+    if print_results:
+        print(f"Correlation between {variable_1} and {variable_2}")
+    if method == "spearman":
+        correlation_method = scipy.stats.spearmanr
+    elif method == "pearson":
+        correlation_method = scipy.stats.pearsonr
+    results_dict = {}
+    for group in groups:
+        indices = adata.obs[group_key] == group
+        arrays = []
+        for variable, layer in zip([variable_1, variable_2], layers):
+            if variable in adata.obs.columns:
+                array = adata[indices].obs[variable]
+            else:
+                if layer == "raw":
+                    array = adata.raw.to_adata()[indices, variable].X
+                    if hasattr(array, "toarray"):
+                        array = array.toarray()
+                    else:
+                        array = numpy.array(array)
+                elif layer == "X":
+                    array = adata[indices, variable].X
+                    if hasattr(array, "toarray"):
+                        array = array.toarray()
+                    else:
+                        array = numpy.array(array)
+                else:
+                    array = numpy.array(adata[indices, variable].layers[layer])
+            arrays.append(array)
+        correlation_result = correlation_method(arrays[0], arrays[1])
+        if isinstance(correlation_result.statistic, numpy.ndarray):
+            statistic = correlation_result.statistic[0]
+        else:
+            statistic = correlation_result.statistic
+        if isinstance(correlation_result.pvalue, numpy.ndarray):
+            pvalue = correlation_result.pvalue[0]
+        else:
+            pvalue = correlation_result.pvalue
+        if print_results:
+            print(f"{group}: {statistic:.3g}, p-value: {pvalue:.3g}")
+        else:
+            results_dict[group] = {"statistic": statistic, "pvalue": pvalue}
+    
+    # Total correlation
+    if len(groups) > 1:
+        indices = adata.obs[group_key].isin(groups)
+        arrays = []
+        for variable, layer in zip([variable_1, variable_2], layers):
+            if variable in adata.obs.columns:
+                array = adata[indices].obs[variable]
+            else:
+                if layer == "raw":
+                    array = adata.raw.to_adata()[indices, variable].X
+                    if hasattr(array, "toarray"):
+                        array = array.toarray()
+                    else:
+                        array = numpy.array(array)
+                elif layer == "X":
+                    array = adata[indices, variable].X
+                    if hasattr(array, "toarray"):
+                        array = array.toarray()
+                    else:
+                        array = numpy.array(array)
+                else:
+                    array = numpy.array(adata[indices, variable].layers[layer])
+            arrays.append(array)
+        correlation_result = correlation_method(arrays[0], arrays[1])
+        if isinstance(correlation_result.statistic, numpy.ndarray):
+            statistic = correlation_result.statistic[0]
+        else:
+            statistic = correlation_result.statistic
+        if isinstance(correlation_result.pvalue, numpy.ndarray):
+            pvalue = correlation_result.pvalue[0]
+        else:
+            pvalue = correlation_result.pvalue
+        if print_results:
+            print(f"Total: {statistic:.3g}, p-value: {pvalue:.3g}")
+        else:
+            results_dict["total"] = {"statistic": statistic, "pvalue": pvalue}
+    if not print_results:
+        return results_dict
+
+def plot_gene_correlation(adata, x_genes, y_genes, layer="Ms", annotation_style="stars", figsize=(10, 8), title="", group_key=None, groups=None):
+    
+    # subset the anndata object if specific groups are requested
+    if group_key is not None and groups is not None:
+        if isinstance(groups, str):
+            groups = [groups]
+        adata_subset = adata[adata.obs[group_key].isin(groups)]
+    else:
+        adata_subset = adata
+    
+    # ensure requested genes are present in the dataset to prevent key errors
+    valid_x_genes = [gene for gene in x_genes if gene in adata_subset.var_names]
+    valid_y_genes = [gene for gene in y_genes if gene in adata_subset.var_names]
+    
+    # extract the expression data into dataframes using the subsetted data
+    x_data = pandas.DataFrame(
+        data=adata_subset[:, valid_x_genes].layers[layer], 
+        index=adata_subset.obs.index, 
+        columns=valid_x_genes
+    )
+    y_data = pandas.DataFrame(
+        data=adata_subset[:, valid_y_genes].layers[layer], 
+        index=adata_subset.obs.index, 
+        columns=valid_y_genes
+    )
+    
+    # initialize empty dataframes for the correlation coefficients and p-values
+    correlation_matrix = pandas.DataFrame(index=valid_y_genes, columns=valid_x_genes, dtype=float)
+    pvalue_matrix = pandas.DataFrame(index=valid_y_genes, columns=valid_x_genes, dtype=float)
+    
+    # calculate the spearman correlation and p-value for each gene pair
+    for y_gene in valid_y_genes:
+        for x_gene in valid_x_genes:
+            correlation, pvalue = scipy.stats.spearmanr(y_data[y_gene], x_data[x_gene])
+            correlation_matrix.loc[y_gene, x_gene] = correlation
+            pvalue_matrix.loc[y_gene, x_gene] = pvalue
+            
+    # create the text annotation matrix based on the specified style
+    annotation_matrix = pandas.DataFrame(index=valid_y_genes, columns=valid_x_genes, dtype=str)
+    
+    for y_gene in valid_y_genes:
+        for x_gene in valid_x_genes:
+            p = pvalue_matrix.loc[y_gene, x_gene]
+            if annotation_style == "stars":
+                if p < 0.001:
+                    annotation = "***"
+                elif p < 0.01:
+                    annotation = "**"
+                elif p < 0.05:
+                    annotation = "*"
+                else:
+                    annotation = ""
+            elif annotation_style == "p-value":
+                annotation = f"{p:.1e}"
+            else:
+                annotation = ""
+                
+            annotation_matrix.loc[y_gene, x_gene] = annotation
+            
+    # initialize the figure canvas and axis
+    figure, axis = matplotlib.pyplot.subplots(figsize=figsize)
+
+    # create an axes divider mapped to the main axis to ensure the colorbar matches the height
+    divider = mpl_toolkits.axes_grid1.make_axes_locatable(axis)
+    colorbar_axis = divider.append_axes("right", size="5%", pad=0.1)
+
+    # plot the heatmap mapping the colorbar to the newly appended axis and applying the annotations
+    seaborn.heatmap(
+        data=correlation_matrix,
+        annot=annotation_matrix,
+        fmt="",
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
+        center=0,
+        square=True,
+        xticklabels=True,
+        yticklabels=True,
+        ax=axis,
+        cbar_ax=colorbar_axis,
+        cbar_kws={"label": "Spearman Correlation"}
+    )
+
+    # apply axis labels
+    axis.set_xlabel("Target Genes")
+    axis.set_ylabel("Source Genes")
+
+    # rotate the x-axis tick labels to prevent text overlap
+    axis.set_xticklabels(axis.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    # ensure y-axis labels are horizontal
+    axis.set_yticklabels(axis.get_yticklabels(), rotation=0)
+
+    axis.set_title(title)
+
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.show()
