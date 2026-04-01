@@ -47,7 +47,7 @@ def plot_group_composition(adata, group_key, sample_key="sample", normalize=Fals
 
 # Function for plotting trends independent of trajectory
 
-def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_time", layer=None, groups="all", columns=4, figure_width=14, plot_height=4, n_splines=6,
+def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_time", layer=None, groups="all", columns=4, figure_width=14, plot_height=4, n_splines=10,
     obsm=False, show=True):
     """
     Plots smoothed gene expression using generalized additive models (GAMs).
@@ -599,10 +599,11 @@ def plot_trends_by_trajectory(
     tfs, 
     time_key="latent_time", 
     model=None, 
-    group_key="group", 
-    groups="all", 
+    group_key=None, 
+    groups="all",
+    lineages="all",
     layer=None, 
-    n_knots=6, 
+    n_knots=10, 
     smoothing_penalty=10.0,
     n_columns=4
 ):
@@ -610,11 +611,11 @@ def plot_trends_by_trajectory(
     Plots decoupler transcription factor activity scores using cellrank gene trends.
     """
 
-    if groups == "all":
-        groups = adata.obs[group_key].cat.categories
-    
-    group_mask = adata.obs[group_key].isin(groups)
-    adata_sub = adata[group_mask].copy()
+    if group_key is None or groups == "all":
+        adata_sub = adata
+    else:
+        group_mask = adata.obs[group_key].isin(groups)
+        adata_sub = adata[group_mask].copy()
 
     term_state_colors = adata.uns["term_states_fwd_colors"].copy()
 
@@ -644,6 +645,15 @@ def plot_trends_by_trajectory(
         )
     elif layer == "X":
         X_data = adata_sub[:, tfs].X
+        if hasattr(X_data, "toarray"):
+            X_data = X_data.toarray()
+        activity_matrix = pandas.DataFrame(
+            X_data, 
+            columns=tfs, 
+            index=adata_sub.obs_names
+        )
+    elif layer == "raw":
+        X_data = adata_sub.raw.to_adata()[:, tfs].X
         if hasattr(X_data, "toarray"):
             X_data = X_data.toarray()
         activity_matrix = pandas.DataFrame(
@@ -686,6 +696,9 @@ def plot_trends_by_trajectory(
             n_knots=n_knots, 
             smoothing_penalty=smoothing_penalty
         )
+
+    if lineages == "all":
+        lineages = adata.obs["term_states_fwd"].cat.categories
         
     cellrank.pl.gene_trends(
         tf_adata,
@@ -693,7 +706,7 @@ def plot_trends_by_trajectory(
         genes=tfs,
         data_key="X",
         same_plot=True,
-        lineages=["Stem cell", "Dead end"],
+        lineages=lineages,
         ncols=n_columns,
         time_key=time_key,
         hide_cells=True,
