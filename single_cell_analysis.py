@@ -17,7 +17,7 @@ import textwrap
 import scipy
 import mpl_toolkits.axes_grid1
 
-def plot_group_composition(adata, group_key, sample_key="sample", normalize=False):
+def plot_group_composition(adata, group_key, sample_key="sample", normalize=False, show=True, rotation=45):
     if f"{sample_key}_colors" in adata.uns.keys():
         sample_color_map = {}
         for sample, color in zip(adata.obs[sample_key].cat.categories, adata.uns[f"{sample_key}_colors"]):
@@ -33,9 +33,12 @@ def plot_group_composition(adata, group_key, sample_key="sample", normalize=Fals
     # Plot the stacked bar chart
     composition.plot(kind="bar", stacked=True, figsize=(10, 6), color=sample_color_map)
     axis = pyplot.gca()
-    axis.legend(title="Sample", bbox_to_anchor=(1.05, 1), loc="upper left")
+    axis.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    legend = axis.get_legend()
+    legend.set_title(sample_key.capitalize(), {"size": matplotlib.rcParams.get("font.size")})
     axis.grid(False)
     axis.set_xlabel(group_key.capitalize())
+    axis.set_xticklabels(axis.get_xticklabels(), rotation=rotation, rotation_mode="anchor", ha="right")
     if normalize:
         ylabel = "Proportion"
     else:
@@ -43,7 +46,11 @@ def plot_group_composition(adata, group_key, sample_key="sample", normalize=Fals
     axis.set_ylabel(ylabel)
     figure = pyplot.gcf()
     figure.tight_layout()
-    pyplot.show()
+    if show:
+        pyplot.show()
+        return
+    else:
+        return axis
 
 # Function for plotting trends independent of trajectory
 

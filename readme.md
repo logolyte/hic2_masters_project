@@ -1,9 +1,9 @@
 # Studying role of Hic2 in cellular reprogramming with computational models
 
 Environments:
-- ``velocity``: Used for almost all notebooks.
-- ``unitvelo``: Used for the "Unitvelo.ipynb" notebook.
-- ``scvi``: Used for the "Differential expression scvi.ipynb" notebook.
+- `velocity`: Used for almost all notebooks.
+- `unitvelo`: Used for the "Unitvelo.ipynb" notebook.
+- `scvi`: Used for the "Differential expression scvi.ipynb" notebook.
 
 How to replicate the results:
 1. ...
