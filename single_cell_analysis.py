@@ -2,6 +2,7 @@ import scanpy
 import anndata
 import matplotlib
 from matplotlib import pyplot
+import mpl_toolkits
 import hdf5plugin
 import numpy
 import scvelo
@@ -156,7 +157,7 @@ def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_ti
                 alpha=0.2
             )
 
-        axis.set_title(f"{gene} expression")
+        axis.set_title(f"{gene}")
         axis.set_xlabel("Latent Time")
         
         # Add legend to the first plot
@@ -174,8 +175,8 @@ def plot_grouped_gene_trend(adata, genes, group_key="group", time_key="latent_ti
         return axes_flat
 
 def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms=5, significance_cutoff=0.05, sort_key="NES", remove_parenthesis=False,
-                 wrap_width=30, font_size=10, min_dot_size=5, top_from="all", significance_metric="FDR q-val", enrichment_cutoff=0, reverse = False,
-                 terms="all"):
+                 wrap_width=30, font_size=14, min_dot_size=5, top_from="all", significance_metric="FDR q-val", enrichment_cutoff=None, reverse=False,
+                 terms="all", permutation_num=1000, show=False, xlabel="", ylabel="", row_height=0.4, column_width=0.4):
 
     if type(data) == anndata.AnnData:
         adata = data
@@ -215,6 +216,7 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
             threads=32,
             min_size=5,
             max_size=1000,
+            permutation_num=permutation_num
         )
         results_dataframe = pre_res.res2d.copy()
         results_dataframe["group"] = group
@@ -226,7 +228,6 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
     if not terms == "all":
         gsea_dataframe = gsea_dataframe[gsea_dataframe["Term"].isin(terms)]
 
-
     # identify the top significant gene sets across all groups or one group
     top_gene_sets = []
     if top_from == "all":
@@ -234,13 +235,14 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
     else:
         group_set = [top_from]
     for group in group_set:
-            if reverse:
-                significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)\
-                                                     & (gsea_dataframe["NES"] < enrichment_cutoff)]
-            else:
-                significant_results = gsea_dataframe[(gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)\
-                                                     & (gsea_dataframe["NES"] > enrichment_cutoff)]
-            top_terms = significant_results.sort_values(by=sort_key, ascending=reverse).head(n_top_terms)["Term"].tolist()
+            gene_set_filter = (gsea_dataframe["group"] == group) & (gsea_dataframe[significance_metric] <= significance_cutoff)
+            if not enrichment_cutoff is None:
+                if reverse:
+                    gene_set_filter &= (gsea_dataframe["NES"] < enrichment_cutoff)
+                else:
+                    gene_set_filter &= (gsea_dataframe["NES"] > enrichment_cutoff)
+            significant_results = gsea_dataframe[gene_set_filter]
+            top_terms = significant_results.sort_values(by=sort_key, ascending = (not reverse)).head(n_top_terms)["Term"].tolist()
             top_gene_sets.extend(top_terms)
 
     # retain unique gene sets while preserving their initial order
@@ -261,15 +263,16 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
     plot_dataframe["Term"] = plot_dataframe["Term"].apply(lambda text: textwrap.fill(text, width=wrap_width))
 
     # convert false discovery rate to negative log10 scale for dot size scaling
-    plot_dataframe[significance_metric] = plot_dataframe[significance_metric].replace(0.0, 1e-10)
+    plot_dataframe[significance_metric] = plot_dataframe[significance_metric].replace(0.0, 1/permutation_num)
     
     # strictly cast the column to float to prevent numpy object array errors
     plot_dataframe[significance_metric] = plot_dataframe[significance_metric].astype(float)
     
-    plot_dataframe["-log10(FDR)"] = -numpy.log10(plot_dataframe[significance_metric])
+    fdr_key = "-log$_{10}$(FDR)"
+    plot_dataframe[fdr_key] = -numpy.log10(plot_dataframe[significance_metric])
     
     # convert -0 to +0
-    plot_dataframe["-log10(FDR)"] = numpy.abs(plot_dataframe["-log10(FDR)"])
+    plot_dataframe[fdr_key] = numpy.abs(plot_dataframe[fdr_key])
 
     # determine the maximum absolute enrichment score to strictly center the color map at zero
     max_absolute_score = plot_dataframe["NES"].abs().max()
@@ -277,38 +280,81 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
     # dynamically adjust figure size based on the number of terms and groups
     number_of_terms = len(plot_dataframe["Term"].unique())
     number_of_groups = len(groups)
-    figure_height = max(6.0, number_of_terms * 0.6)
-    figure_width = max(8.0, number_of_groups * 1.2)
+    
+    desired_axes_width = max(2.0, number_of_groups * column_width)
+    desired_axes_height = max(2.0, number_of_terms * row_height)
 
-    # generate the dotplot visualization
-    matplotlib.pyplot.figure(figsize=(figure_width, figure_height))
-    axis = seaborn.scatterplot(
+    # allocate safely large margins
+    left_margin = 8.0
+    right_margin = 4.0
+    bottom_margin = 3.0
+    top_margin = 1.0
+
+    figure_width = left_margin + desired_axes_width + right_margin
+    figure_height = bottom_margin + desired_axes_height + top_margin
+
+    # generate the dotplot visualization using a large base canvas
+    figure = matplotlib.pyplot.figure(figsize=(figure_width, figure_height))
+
+    # define fixed size grid regions
+    horizontal_regions = [
+        mpl_toolkits.axes_grid1.Size.Fixed(left_margin),
+        mpl_toolkits.axes_grid1.Size.Fixed(desired_axes_width),
+        mpl_toolkits.axes_grid1.Size.Fixed(right_margin)
+    ]
+
+    vertical_regions = [
+        mpl_toolkits.axes_grid1.Size.Fixed(bottom_margin),
+        mpl_toolkits.axes_grid1.Size.Fixed(desired_axes_height),
+        mpl_toolkits.axes_grid1.Size.Fixed(top_margin)
+    ]
+
+    divider = mpl_toolkits.axes_grid1.Divider(
+        figure,
+        pos=(0.0, 0.0, 1.0, 1.0),
+        horizontal=horizontal_regions,
+        vertical=vertical_regions
+    )
+
+    # map the axes strictly to the central cell
+    axis = figure.add_axes(
+        rect=(0.0, 0.0, 1.0, 1.0),
+        axes_locator=divider.new_locator(nx=1, ny=1)
+    )
+
+    seaborn.scatterplot(
         data=plot_dataframe,
         x="group",
         y="Term",
         hue="NES",
-        size="-log10(FDR)",
+        size=fdr_key,
         sizes=(min_dot_size, 300),
         palette="coolwarm",
-        hue_norm=(-max_absolute_score, max_absolute_score)
+        hue_norm=(-max_absolute_score, max_absolute_score),
+        ax=axis
     )
 
+    # explicitly set categorical axis limits to prevent marker clipping
+    axis.set_xlim(-0.5, number_of_groups - 0.5)
+    axis.set_ylim(-0.5, number_of_terms - 0.5)
+
     # format the axes and reposition the legend outside the plot area
-    axis.set_xlabel(group_key.capitalize(), fontsize=font_size)
+    axis.set_xlabel(xlabel, fontsize=font_size)
     axis.set_xticklabels(axis.get_xticklabels(), rotation=45, rotation_mode="anchor", ha="right")
-    axis.set_ylabel("Gene set", fontsize=font_size)
+    axis.set_ylabel(ylabel, fontsize=font_size)
     axis.grid(False)
     axis.legend(bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
     axis.tick_params(axis="both", labelsize=font_size)
 
-    figure = axis.get_figure()
-    figure.tight_layout()
-    pyplot.show()
+    if show:
+        matplotlib.pyplot.show()
+    else:
+        return axis
 
 # Score TF activity in all macrostates
 
-def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5, top_from="all", significance_cutoff=0.05, min_dot_size=5, font_size=12,
-    activity_cutoff=-numpy.inf, reverse = False, pathway_key="TF"):
+def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5, top_from="all", significance_cutoff=0.05, min_dot_size=5, font_size=14,
+    activity_cutoff=-numpy.inf, reverse = False, pathway_key="", show=False, xlabel=""):
 
     groups = adata.obs[group_key].cat.categories
 
@@ -376,10 +422,11 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
     # strictly cast the column to float to prevent numpy object array errors
     plot_dataframe["Adjusted p-value"] = plot_dataframe["Adjusted p-value"].astype(float)
     
-    plot_dataframe["-log10(padj)"] = -numpy.log10(plot_dataframe["Adjusted p-value"])
+    padj_key = "-log$_{10}(p_{adj})$"
+    plot_dataframe[padj_key] = -numpy.log10(plot_dataframe["Adjusted p-value"])
     
     # convert -0 to +0
-    plot_dataframe["-log10(padj)"] = numpy.abs(plot_dataframe["-log10(padj)"])
+    plot_dataframe[padj_key] = numpy.abs(plot_dataframe[padj_key])
 
     # determine the maximum absolute enrichment score to strictly center the color map at zero
     max_absolute_score = plot_dataframe["Activity"].abs().max()
@@ -388,7 +435,7 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
     number_of_terms = len(plot_dataframe[pathway_key].unique())
     number_of_groups = len(groups)
     figure_height = max(6.0, number_of_terms * 0.6)
-    figure_width = max(8.0, number_of_groups * 1.2)
+    figure_width = max(5.0, number_of_groups * 0.7)
 
     # generate the dotplot visualization
     matplotlib.pyplot.figure(figsize=(figure_width, figure_height))
@@ -397,14 +444,14 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
         x="group",
         y=pathway_key,
         hue="Activity",
-        size="-log10(padj)",
+        size=padj_key,
         sizes=(min_dot_size, 300),
         palette="coolwarm",
         hue_norm=(-max_absolute_score, max_absolute_score)
     )
 
     # format the axes and reposition the legend outside the plot area
-    axis.set_xlabel(group_key.capitalize(), fontsize=font_size)
+    axis.set_xlabel(xlabel, fontsize=font_size)
     axis.set_xticklabels(axis.get_xticklabels(), rotation=45, rotation_mode="anchor", ha="right")
     axis.set_ylabel(pathway_key, fontsize=font_size)
     axis.grid(False)
@@ -413,7 +460,11 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
 
     figure = axis.get_figure()
     figure.tight_layout()
-    pyplot.show()
+
+    if show:
+        pyplot.show()
+    else:
+        return axis
 
 def calculate_correlation(adata, variable_1, variable_2, group_key="group", groups="all", layers=["Ms", "Ms"], print_results=True, method="spearman"):
     if print_results:
