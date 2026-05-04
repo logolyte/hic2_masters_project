@@ -242,11 +242,11 @@ def compare_gsea(data, gene_set, group_key="macrostate", layer=None, n_top_terms
                 else:
                     gene_set_filter &= (gsea_dataframe["NES"] > enrichment_cutoff)
             significant_results = gsea_dataframe[gene_set_filter]
-            top_terms = significant_results.sort_values(by=sort_key, ascending = (not reverse)).head(n_top_terms)["Term"].tolist()
+            top_terms = significant_results.sort_values(by=sort_key, ascending = reverse).head(n_top_terms)["Term"].tolist()
             top_gene_sets.extend(top_terms)
 
     # retain unique gene sets while preserving their initial order
-    unique_top_gene_sets = list(dict.fromkeys(top_gene_sets))
+    unique_top_gene_sets = list(dict.fromkeys(top_gene_sets))[::-1]
 
     # filter the main dataframe to include only the selected top gene sets
     plot_dataframe = gsea_dataframe[gsea_dataframe["Term"].isin(unique_top_gene_sets)].copy()
@@ -386,28 +386,22 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
 
     top_gene_sets = []
     if top_from == "all":
-        for group in groups:
-            if reverse:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
-                                                (tf_activities["Activity"] < activity_cutoff)]
-            else:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
-                                                (tf_activities["Activity"] > activity_cutoff)]
-            top_terms = significant_results.sort_values(by="Activity", ascending=reverse).head(n_top)[pathway_key].tolist()
-            top_gene_sets.extend(top_terms)
+        group_set = groups
     else:
-        group = top_from
-        if reverse:
-                significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
-                                            (tf_activities["Activity"] < activity_cutoff)]
-        else:
-            significant_results = tf_activities[(tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff) &\
-                                            (tf_activities["Activity"] > activity_cutoff)]
-        top_terms = significant_results.sort_values(by="Activity", ascending=reverse).head(n_top)[pathway_key].tolist()
-        top_gene_sets.extend(top_terms)
+        group_set = [top_from]
+    for group in group_set:
+            gene_set_filter = (tf_activities["group"] == group) & (tf_activities["Adjusted p-value"] <= significance_cutoff)
+            if not activity_cutoff is None:
+                if reverse:
+                    gene_set_filter &= (tf_activities["Activity"] < activity_cutoff)
+                else:
+                    gene_set_filter &= (tf_activities["Activity"] > activity_cutoff)
+            significant_results = tf_activities[gene_set_filter]
+            top_terms = significant_results.sort_values(by="Activity", ascending = reverse).head(n_top)[pathway_key].tolist()
+            top_gene_sets.extend(top_terms)
 
     # retain unique gene sets while preserving their initial order
-    unique_top_gene_sets = list(dict.fromkeys(top_gene_sets))
+    unique_top_gene_sets = list(dict.fromkeys(top_gene_sets))[::-1]
 
     # filter the main dataframe to include only the selected top gene sets
     plot_dataframe = tf_activities[tf_activities[pathway_key].isin(unique_top_gene_sets)].copy()
@@ -457,6 +451,10 @@ def plot_tf_activity(adata, network, group_key="macrostate", layer=None, n_top=5
     axis.grid(False)
     axis.legend(bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
     axis.tick_params(axis="both", labelsize=font_size)
+
+    # explicitly set categorical axis limits to prevent marker clipping
+    axis.set_xlim(-0.5, number_of_groups - 0.5)
+    axis.set_ylim(-0.5, number_of_terms - 0.5)
 
     figure = axis.get_figure()
     figure.tight_layout()
