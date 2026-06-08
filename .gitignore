@@ -1,28 +1,18 @@
 
-/ChIP Sequencing Data
-RNA Sequencing Data/220701Pool1-Pool3.rds
-RNA Sequencing Data/220701Pool1-Pool3.h5Seurat
-RNA Sequencing Data/220701Pool1-Pool3.h5ad
-/RNA Sequencing Data/raw_reads
-RNA Sequencing Data/splice_counts.h5ad
-RNA Sequencing Data/velocity_adata.h5ad
+ChIP Sequencing Data/*
 .~lock.Log.odt\#
-RNA Sequencing Data/seurat_object.h5ad
-RNA Sequencing Data/splice_counts_genbank.h5ad
-RNA Sequencing Data/splice_counts_kb.h5ad
-RNA Sequencing Data/splice_counts_umap.h5ad
-RNA Sequencing Data/splice_counts_umap_genbank.h5ad
-RNA Sequencing Data/velocity_adata_new_umap.h5ad
-RNA Sequencing Data/velocity_adata_old_umap.h5ad
 .~lock.To do.odt\#
 .readme.md.kate-swp
-RNA Sequencing Data
-res/temp/temp_1.h5ad
-res/temp/Mu.csv
-res/temp/Ms.csv
-res/temp/fitvar.csv
-res/temp/fitu.csv
-res/temp/fits.csv
+RNA Sequencing Data/*
+res
 outcmaes
 __pycache__
 Archived scripts/Networks
+!RNA Sequencing Data/Bulk RNA sequencing data Hic2
+!RNA Sequencing Data/fdl.csv
+!ChIP Sequencing Data/Mus_musculus_TF.txt
+!RNA Sequencing Data/mm10 gencode reference
+RNA Sequencing Data/mm10 gencode reference/*
+!RNA Sequencing Data/10x-v3-whitelist-february-2018.txt
+!RNA Sequencing Data/bam_files
+RNA Sequencing Data/bam_files/*
