@@ -1,18 +1,10 @@
 
-ChIP Sequencing Data/*
+ChIP Sequencing Data
 .~lock.Log.odt\#
 .~lock.To do.odt\#
 .readme.md.kate-swp
-RNA Sequencing Data/*
+RNA Sequencing Data
 res
 outcmaes
 __pycache__
 Archived scripts/Networks
-!RNA Sequencing Data/Bulk RNA sequencing data Hic2
-!RNA Sequencing Data/fdl.csv
-!ChIP Sequencing Data/Mus_musculus_TF.txt
-!RNA Sequencing Data/mm10 gencode reference
-RNA Sequencing Data/mm10 gencode reference/*
-!RNA Sequencing Data/10x-v3-whitelist-february-2018.txt
-!RNA Sequencing Data/bam_files
-RNA Sequencing Data/bam_files/*

@@ -1,0 +1,39 @@
+Comment[ArrayExpressAccession]	E-MTAB-13169
+MAGE-TAB Version	1.1
+Comment[Submitted Name]	bulk RNA-sequencing of mouse embryonic fibroblast (MEF) reprogramming time course with control blue fluoresce protein (BFP) or Hic2 overexpression																																															
+Investigation Title	bulk RNA-sequencing of mouse embryonic fibroblast (MEF) reprogramming time course with control blue fluoresce protein (BFP) or Hic2 overexpression
+Experiment Description	MEFs with doxycycline (Dox)-inducible reprogramming cassette MKOS-ires-mOrange and a Nanog-GFP reporter were transduced with lentiviral Dox-inducible Ty1-BFP (control, BFP with a Ty1 tag at the N-terminus) or Ty1-Hic2 (HIC2 with a Ty1 tag at the N-terminus) expression vector with an MOI of 3. 1 day later, reprogramming was initiated by the administration of Dox. 2, 4, 6, 10 days later, mOrange expressing cells were flow sorted for RNA extraction. Nanog-GFP+ iPS cells were flow sorted from samples cultured for 15 days in the presence of Dox, and then cultured as a bulk population in the absence of Dox for 20 days before RNA extraction. In parallel, wild-type 129 MEFs with BFP or Hic2 overexpression for 3 days, E14Tg2a ES cells with BFP overexpression were also prepared as RNA-seq samples. Libraries were prepped with the NEB Ultra II stranded mRNA Library prep kit (NEB), and the sequence was carried out with NextSeq, 75SE.
+Experimental Design	time series design
+Experimental Design Term Source REF	EFO
+Experimental Design Term Accession Number	EFO:0001779
+Experimental Factor Name	cell type	time	replicate
+Experimental Factor Type	cell type	time	replicate
+Experimental Factor Term Source REF	EFO	EFO
+Experimental Factor Term Accession Number	EFO_0000324	EFO_0000721
+Person Last Name	Kaji
+Person First Name	Keisuke
+Person Mid Initials
+Person Email	keisuke.kaji@ed.ac.uk
+Person Phone	+44 131 651 9551
+Person Fax
+Person Address	Centre for Regenerative Medicine Institute for Regeneration and Repair University of Edinburgh Edinburgh BioQuarter, 5 Little France Drive, Edinburgh EH16 4UU, UK
+Person Affiliation	University of Edinburgh
+Person Roles	investigator;submitter
+Date of Experiment	2020-06-12
+Public Release Date	2025-04-26
+Protocol Name	P-MTAB-134829	P-MTAB-134830	P-MTAB-134831	P-MTAB-134832	P-MTAB-134833
+Protocol Type	sample collection protocol	nucleic acid extraction protocol	nucleic acid library construction protocol	nucleic acid sequencing protocol	normalization data transformation protocol
+Protocol Term Source REF	EFO	EFO	EFO	EFO	EFO
+Protocol Term Accession Number	EFO_0005518	EFO_0002944	EFO_0004184	EFO_0004170	EFO_0003816
+Protocol Description	For control and Hic2 overexpressing MEF samples, 1 × 105 Cas9 TNG MKOS MEFs were transduced with either Ty1-BFP (control, BFP tagged with a Ty1 tag at the N-term end ) or Ty1-Hic2 (HIC2 tagged with a Ty1 tag at the N-term end) lentiviruses at an MOI of 3 with 8 µg/ml polybrene (Merck-Millipore) for 4 h. After 3 days in culture in MEF media, the cells were harvested and FACS-sorted to exclude dead cells with LIVE/DEAD™ Fixable Near-IR Dead Cell Stain Kit (ThermoFisher Scientific, Dilution: 1/1500). For reprogramming samples, 0.5 × 104 Cas9 TNG MKOS MEFs were mixed with 9.5 × 104 WT MEFs (129 strain) and seeded in gelatin-coated wells of 6-well plates. Cells were transduced with either Ty1-BFP or Ty1-Hic2 lentivirus at an MOI of 3 with 8 µg/ml polybrene (Merck-Millipore) for 4h, before being recovered for 24 h in MEF media. Reprogramming was initiated by the addition of a reprogramming medium. Cells were harvested at day 2, day 4, day 6 and day 10 of reprogramming, respectively, and a maximum of 1 × 105 of mOrange+ OSKM and Nanog-GFP+ expressing cells were sorted with the FACS AriaII (BD Biosciences) per sample. Additionally, iPSCs were generated from Cas9 TNG MKOS MEFs transduced with a tet-inducible version of the Ty1-BFP and Ty1-Hic2 lentiviral particles Nanog-GFP+ iPSCs were harvested at day 15, and sorted with the FACS AriaII (BD Biosciences) and put in culture in ESC medium for 20 days in absence of doxycycline.  	All cells were homogenized with the QIAshredder kit (Qiagen) and total RNA was extracted from all samples using the RNeasy Plus Micro Kit (Qiagen). 	Libraries were prepped with the NEB Ultra II stranded mRNA Library prep kit (NEB). 	RNA-sequencing was carried out with Illumina NextSeq, 75SE	For each sequencing run, a quality control report was generated using FastQC and Illumina TruSeq adapter sequences were removed using Cutadapt (Martin, 2011). Sequencing runs from the same biological sample were then concatenated and mapped to the GRCm38 reference genome using STAR (Dobin et al., 2013). For each biological sample, aligned sequencing reads were first assigned to genomic features (e.g., genes) using Rsubread (Liao et al., 2019) and a count table was generated. Differential expression analysis was then performed with DESeq2 (Love et al., 2014), and statistically significant genes (e.g., FDR < 0.05 and log2FoldChange > 1) were identified using the standard workflow. For exploratory analysis and visualization, a batch-corrected and regularized log matrix of expression values was used. The count table was first transformed to stabilize the variance across the mean using the rlog function from DESeq2 and then unwanted batch effects (e.g., library preparation date) were removed using the removeBatchEffect function from limma (Ritchie et al., 2015).
+Protocol Hardware				NextSeq 500
+Protocol Software					DESeq2
+Term Source Name	EFO
+Term Source File	http://www.ebi.ac.uk/efo/
+Term Source Version
+Comment[AEExperimentType]	RNA-seq of coding RNA
+Comment[TemplateType]	Cell line - High-throughput sequencing
+Comment[RelatedExperiment]	E-MTAB-13029
+Comment[SecondaryAccession]	ERP149717
+Comment[SequenceDataURI]	http://www.ebi.ac.uk/ena/data/view/ERR11757943-ERR11757981	http://www.ebi.ac.uk/ena/data/view/ERR12313115-ERR12313122
+SDRF File	E-MTAB-13169.sdrf.txt
