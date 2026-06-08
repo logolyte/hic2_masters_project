@@ -1,8 +1,8 @@
 # Variables
 base=$1
-INDEX_DIR="/scratch/lema/m26_losu/mm10 gencode reference/star_index"  # STAR genome index directory
-BAM_INPUT="/scratch/lema/m26_losu/bam_files/$base.bam"       # BAM file (mapped or unmapped)
-out_dir="/scratch/lema/m26_losu/star_counts_gencode_mm10/$base/"              # output directory
+INDEX_DIR="RNA Sequencing Data/mm10 gencode reference/star_index"  # STAR genome index directory
+BAM_INPUT="RNA Sequencing Data/bam_files/$base.bam"       # BAM file (mapped or unmapped)
+out_dir="RNA Sequencing Data/star_counts_gencode_mm10/$base/"              # output directory
 
 STAR \
   --genomeDir "$INDEX_DIR" \
@@ -19,7 +19,7 @@ STAR \
   --outFileNamePrefix "$out_dir" \
   --outSAMtype None \
   --soloCellFilter EmptyDrops_CR \
-  --soloCBwhitelist "/scratch/lema/m26_losu/10x-v3-whitelist-february-2018.txt" \
+  --soloCBwhitelist "RNA Sequencing Data/10x-v3-whitelist-february-2018.txt" \
   --runThreadN 32 \
   --clipAdapterType CellRanger4 \
   --outFilterScoreMin 30 \
